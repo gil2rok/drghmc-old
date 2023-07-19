@@ -1,1 +1,0 @@
-{"model_num": 1, "chain_num": 1, "burn_in": 10, "chain_length": 10, "global_seed": 0, "save_dir": "res", "pdb_dir": ".", "bridgestan_dir": "../../.bridgestan/bridgestan-2.1.1/"}

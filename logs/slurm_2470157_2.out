@@ -1,4 +1,0 @@
-00cd0788a03c915651f5db3a3a92fd72 	 model_params(init_stepsize=0.001, adaptivity_factor=2, leapfrog_steps='const_num_steps', dampening=0.05, num_proposals=3, probabilistic=True)
-0098ee02bb34495b6aa9b1add0c1521e 	 model_params(init_stepsize=0.001, adaptivity_factor=2, leapfrog_steps='const_num_steps', dampening=0.05, num_proposals=3, probabilistic=False)
-00fc3bfcf9dd05404f02b0abe9d03bbf 	 model_params(init_stepsize=0.001, adaptivity_factor=2, leapfrog_steps='const_trajectory_length', dampening=0.05, num_proposals=3, probabilistic=True)
-008cb7f979283f8bb2c96fb35a05e88b 	 model_params(init_stepsize=0.001, adaptivity_factor=2, leapfrog_steps='const_trajectory_length', dampening=0.05, num_proposals=3, probabilistic=False)

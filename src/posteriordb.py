@@ -1,6 +1,6 @@
 import numpy as np
-import sys, os
-import json, time
+import os
+import json
 import bridgestan as bs
 
         
@@ -59,6 +59,7 @@ class PDB():
     def get_reference_draws(self):
         """
         """
+        
         params_file = os.path.join(self.model_path, f'PDB_{self.id}.samples.meta')
         with open(params_file, 'r') as f:
             self.parameters = [i for i in f.readline()]
