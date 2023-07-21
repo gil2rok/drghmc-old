@@ -7,4 +7,4 @@
 
 module -q purge
 source ~/mambaforge/bin/activate drghmc
-python src/main.py --model_num 1 --chain_num ${SLURM_ARRAY_TASK_ID}
+python src/main.py --model_num 2 --chain_num ${SLURM_ARRAY_TASK_ID}

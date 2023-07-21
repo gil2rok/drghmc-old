@@ -5,7 +5,7 @@ import numpy as np
 from sklearn.model_selection import ParameterGrid
 
 from utils import my_save, call_counter
-from samplers import bayes_kit_hmc, hmc, ghmc, drhmc, drghmc
+from samplers import bayes_kit_hmc, bayes_kit_mala, hmc, ghmc, drhmc, drghmc
 
 HyperParamsTuple = namedtuple(
     "hyper_params",
@@ -45,6 +45,7 @@ def experiment(sampler, hp, burn_in, chain_len):
     )
     sampler._model.log_density = call_counter(sampler._model.log_density)
     draws = np.asanyarray([sampler.sample()[0] for _ in range(chain_len)])
+    
     return burned_draws, draws
 
 
@@ -60,6 +61,25 @@ def bayes_kit_hmc_runner(hp):
     for sampler_params in sampler_param_grid:
         sp = SamplerParamsTuple(**sampler_params)
         sampler = bayes_kit_hmc(hp, sp)
+
+        burn_in = int(hp.burn_in_gradeval / (sp.steps))
+        chain_len = int(hp.chain_length_gradeval / sp.steps)
+
+        burned_draws, draws = experiment(sampler, hp, burn_in, chain_len)
+        my_save(sp, hp, burned_draws, draws, sampler_type, sampler)
+        
+        
+def bayes_kit_mala_runner(hp):
+    sampler_type = "bk_mala"
+    sampler_param_grid = ParameterGrid(
+        {
+            "init_stepsize": [1e-2],
+        }
+    )
+
+    for sampler_params in sampler_param_grid:
+        sp = SamplerParamsTuple(**sampler_params)
+        sampler = bayes_kit_mala(hp, sp)
 
         burn_in = int(hp.burn_in_gradeval / (sp.steps))
         chain_len = int(hp.chain_length_gradeval / sp.steps)
@@ -93,7 +113,7 @@ def ghmc_runner(hp):
     sampler_param_grid = ParameterGrid(
         {
             "init_stepsize": [1e-2],
-            "dampening": [1e-2],
+            "dampening": [0.01] # dampening = 0 : MALA      dampening = 1 : HMC
         }
     )
 
@@ -181,8 +201,8 @@ if __name__ == "__main__":
         bridgestan_dir="../../.bridgestan/bridgestan-2.1.1/",
     )
 
-    # bayes_kit_hmc_runner(hp)
+    # bayes_kit_mala_runner(hp)
     hmc_runner(hp)
-    # ghmc_runner(hp)
-    # drhmc_runner(hp)
-    # drghmc_runner(hp)
+    ghmc_runner(hp)
+    drhmc_runner(hp)
+    drghmc_runner(hp)

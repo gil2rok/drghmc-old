@@ -6,6 +6,7 @@ import numpy as np
 import os
 from bayes_kit.drghmc import DrGhmcDiag
 from bayes_kit.hmc import HMCDiag
+from bayes_kit.mala import MALA
 
 from utils import get_model
 
@@ -28,6 +29,25 @@ def bayes_kit_hmc(hp, sp):
         steps=sp.steps,
         init=init,
         seed=seed,
+    )
+    
+def bayes_kit_mala(hp, sp):
+    model = get_model(hp.model_num, hp.pdb_dir)
+    # seed depends on global seed and chain number
+    seed = int(str(hp.global_seed) + str(hp.chain_num))
+
+    # remove after testing
+    fname = os.path.join(
+        hp.pdb_dir, f"PDB_{hp.model_num:02d}", f"PDB_{hp.model_num:02d}.samples.npy"
+    )
+    init_constrained = np.load(fname)[0, -1, :].copy(order="C")
+    init = model.unconstrain(init_constrained)
+    
+    return MALA(
+        model = model,
+        epsilon = sp.init_stepsize,
+        init = init,
+        seed = seed
     )
 
 
