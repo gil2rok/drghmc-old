@@ -14,10 +14,6 @@ My work for Flatiron Institue internship under [Chirag Modi](https://modichirag.
 
 ## Obligatory fancy images:
 
-Metropolis Hastings sampling from bivariate normal distribution, taken from [here](https://sandipanweb.wordpress.com/2020/12/07/bayesian-machine-learning-mcmc-and-probabilistic-programming-with-python/):
-
-![mh sampler](https://sandipanweb.files.wordpress.com/2020/12/f1398-1eiqq-va44rznq8m5gxo7hg.gif)
-
 HMC sampling from a banana-shaped distribution, taken from [here](https://github.com/chi-feng/mcmc-demo/tree/master):
 
 ![hmc sampler](https://raw.githubusercontent.com/chi-feng/mcmc-demo/master/docs/hmc.gif)
