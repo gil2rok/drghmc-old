@@ -96,7 +96,11 @@ class BSDB(PDB):
         Wrapper to bridgestan log_density_gradient function to handle batches correctly
         '''
         if len(x.shape) == 1:
-            return self.bsmodel.log_density_gradient(x)        
+            try:
+                return self.bsmodel.log_density_gradient(x)        
+            except Exception as e:
+                print(e)
+                return (None, None)
         elif len(x.shape) == 2:
             lp_gs = list(map(self.bsmodel.log_density_gradient, x))
             lps = np.array([i[0] for i in lp_gs])

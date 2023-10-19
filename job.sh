@@ -1,10 +1,11 @@
 #!/bin/bash
-#SBATCH --job-name=drghmc
-#SBATCH --array=1-4                         ## launch 4 distinct jobs, each with one task
-#SBATCH --output=logs/slurm_%A_%a.out
-#SBATCH --error=logs/slurm_%A_%a.err
-#SBATCH --cpus-per-task=1
+#SBATCH --job-name=funnel20             # Job name
+#SBATCH --nodes=1                       # Number of nodes
+#SBATCH --ntasks=40                      # Number of tasks aka processes
+#SBATCH --output=logs/slurm_%A_%a.out   # Standard output file (%A is the job ID, %a is the task ID)
+#SBATCH --error=logs/slurm_%A_%a.err    # Standard error file (%A is the job ID, %a is the task ID)
 
 module -q purge
+module load slurm openmpi4
 source ~/mambaforge/bin/activate drghmc
-python src/main.py --model_num 2 --chain_num ${SLURM_ARRAY_TASK_ID}
+mpirun -np $SLURM_NTASKS python src/main.py --model_num 3

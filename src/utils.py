@@ -17,6 +17,17 @@ def call_counter(f):
     wrapper.calls = 0
     return wrapper
 
+def grad_counter(f):
+    @functools.wraps(f)
+    def wrapper(*args, **kwargs):
+        lp, grad = f(*args, **kwargs)
+        if grad is not None:
+            wrapper.calls += 1
+        return (lp, grad)
+
+    wrapper.calls = 0
+    return wrapper
+
 
 def get_model(model_num, pdb_dir):
     return BSDB(model_num, pdb_dir)
@@ -99,7 +110,7 @@ def compute_acceptance(sampler, sampler_type, burn_in, sp):
         return None
     
     # compute acceptance statistics
-    all_acceptances = np.asanyarray(sampler._acceptance_list)
+    all_acceptances = np.asanyarray(sampler._acceptance_list, dtype=np.float16)
     burned_acceptances = all_acceptances[:burn_in]
     acceptances = all_acceptances[burn_in:]
     
@@ -141,8 +152,8 @@ def my_save(sp, hp, burned_draws, draws, sampler_type, sampler):
     accept_tuple = compute_acceptance(sampler, sampler_type, burn_in, sp)
     
     # save burned draws, draws, and acceptances as numpy arrays
-    np.save(os.path.join(dir_name, "burned_draws"), burned_draws)
-    np.save(os.path.join(dir_name, "draws"), draws)
+    np.save(os.path.join(dir_name, "burned_draws"), burned_draws.astype(np.float16))
+    np.save(os.path.join(dir_name, "draws"), draws.astype(np.float16))
     
     if accept_tuple is not None:
         acceptances, burned_acceptances = accept_tuple[0], accept_tuple[1]

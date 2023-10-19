@@ -1,10 +1,12 @@
 import argparse
 from collections import namedtuple
 
+from tqdm import tqdm
+from mpi4py import MPI
 import numpy as np
 from sklearn.model_selection import ParameterGrid
 
-from utils import my_save, call_counter
+from utils import my_save, grad_counter, call_counter
 from samplers import bayes_kit_hmc, bayes_kit_mala, hmc, ghmc, drhmc, drghmc
 
 HyperParamsTuple = namedtuple(
@@ -35,15 +37,15 @@ SamplerParamsTuple = namedtuple(
 
 
 def experiment(sampler, hp, burn_in, chain_len):
+    # TODO: add multi-processing here
     burned_draws = np.asanyarray([sampler.sample()[0] for _ in range(burn_in)])
     
-    # ignores the first call to log_density_gradient() in the sampler's init function
-    # this drops the one-off gradient call needed to run leapfrog for the first time
-    # because the gradient has not yet been cached
     sampler._model.log_density_gradient = call_counter(
         sampler._model.log_density_gradient
     )
     sampler._model.log_density = call_counter(sampler._model.log_density)
+    
+    # TODO: add multi-processing here
     draws = np.asanyarray([sampler.sample()[0] for _ in range(chain_len)])
     
     return burned_draws, draws
@@ -58,7 +60,7 @@ def bayes_kit_hmc_runner(hp):
         }
     )
 
-    for sampler_params in sampler_param_grid:
+    for sampler_params in tqdm(sampler_param_grid, desc=sampler_type):
         sp = SamplerParamsTuple(**sampler_params)
         sampler = bayes_kit_hmc(hp, sp)
 
@@ -77,7 +79,7 @@ def bayes_kit_mala_runner(hp):
         }
     )
 
-    for sampler_params in sampler_param_grid:
+    for sampler_params in tqdm(sampler_param_grid, desc=sampler_type):
         sp = SamplerParamsTuple(**sampler_params)
         sampler = bayes_kit_mala(hp, sp)
 
@@ -92,12 +94,12 @@ def hmc_runner(hp):
     sampler_type = "hmc"
     sampler_param_grid = ParameterGrid(
         {
-            "init_stepsize": [1e-2],
-            "steps": [20],
+            "init_stepsize": [1e-2, 5e-2, 1e-1, 2e-1],
+            "steps": [10, 20, 30 ,50],
         }
     )
 
-    for sampler_params in sampler_param_grid:
+    for sampler_params in tqdm(sampler_param_grid, desc=sampler_type):
         sp = SamplerParamsTuple(**sampler_params)
         sampler = hmc(hp, sp)
         
@@ -112,12 +114,12 @@ def ghmc_runner(hp):
     sampler_type = "ghmc"
     sampler_param_grid = ParameterGrid(
         {
-            "init_stepsize": [1e-2],
-            "dampening": [0.01] # dampening = 0 : MALA      dampening = 1 : HMC
+            "init_stepsize": [1e-2, 5e-2, 1e-1, 2e-1],
+            "dampening": [0.01, 0.05, 0.1, 0.2],
         }
     )
 
-    for sampler_params in sampler_param_grid:
+    for sampler_params in tqdm(sampler_param_grid, desc=sampler_type):
         sp = SamplerParamsTuple(**sampler_params)
         sampler = ghmc(hp, sp)
 
@@ -132,15 +134,15 @@ def drhmc_runner(hp):
     sampler_type = "drhmc"
     sampler_param_grid = ParameterGrid(
         {
-            "init_stepsize": [1e-2],
-            "reduction_factor": [2],
-            "steps": [20],
-            "num_proposals": [3],
+            "init_stepsize": [1e-2, 5e-2, 1e-1, 2e-1],
+            "reduction_factor": [2, 4, 5],
+            "steps": [10, 20, 30 ,50],
+            "num_proposals": [2, 3, 4],
             "probabilistic": [False],
         }
     )
 
-    for sampler_params in sampler_param_grid:
+    for sampler_params in tqdm(sampler_param_grid, desc=sampler_type):
         sp = SamplerParamsTuple(**sampler_params)
         sampler = drhmc(hp, sp)
 
@@ -155,16 +157,16 @@ def drghmc_runner(hp):
     sampler_type = "drghmc"
     sampler_param_grid = ParameterGrid(
         {
-            "init_stepsize": [1e-2],
-            "reduction_factor": [2],
-            "steps": ["const_stepsize"],
-            "dampening": [1e-2],
-            "num_proposals": [3],
+            "init_stepsize": [1e-2, 5e-2, 1e-1, 2e-1],
+            "reduction_factor": [2, 4, 5],
+            "steps": ["const_traj_len", 1],
+            "dampening": [0.01, 0.05, 0.1, 0.2],
+            "num_proposals": [1, 2, 3, 4],
             "probabilistic": [False],
         }
     )
 
-    for sampler_params in sampler_param_grid:
+    for sampler_params in tqdm(sampler_param_grid, desc=sampler_type):
         sp = SamplerParamsTuple(**sampler_params)
         sampler = drghmc(hp, sp)
 
@@ -186,22 +188,23 @@ def drghmc_runner(hp):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_num", type=int, help="PDB model number")
-    parser.add_argument("--chain_num", type=int, help="Markov chains number")
+    # parser.add_argument("--chain_num", type=int, help="Markov chains number")
     args = parser.parse_args()
 
     hp = HyperParamsTuple(
         model_num=args.model_num,
-        chain_num=args.chain_num,
+        chain_num=MPI.COMM_WORLD.Get_rank(),
         burn_in_gradeval=100,  # initialize with reference sample, don't require real burn-in
-        chain_length_gradeval=100000,
+        chain_length_gradeval=500000,
         global_seed=0,
-        save_dir="res",
+        save_dir="../ceph/drghmc/res",
         # pdb_dir='/mnt/ceph/users/cmodi/PosteriorDB/',
         pdb_dir="models",
         bridgestan_dir="../../.bridgestan/bridgestan-2.1.1/",
     )
+    
+    print(hp.chain_num)
 
-    # bayes_kit_mala_runner(hp)
     hmc_runner(hp)
     ghmc_runner(hp)
     drhmc_runner(hp)

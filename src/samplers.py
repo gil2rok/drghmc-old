@@ -1,4 +1,5 @@
 import subprocess
+
 # install bayes-kit locally
 # subprocess.run(["pip", "install", "-q", "-e", "../../bayes-kit"])
 
@@ -20,17 +21,18 @@ def bayes_kit_hmc(hp, sp):
     fname = os.path.join(
         hp.pdb_dir, f"PDB_{hp.model_num:02d}", f"PDB_{hp.model_num:02d}.samples.npy"
     )
-    init_constrained = np.load(fname)[0, -1, :].copy(order="C")
+    init_constrained = np.load(fname)[hp.chain_num - 1, -1, :].copy(order="C")
     init = model.unconstrain(init_constrained)
 
     return HMCDiag(
         model=model,
         stepsize=sp.init_stepsize,
         steps=sp.steps,
-        init=init,
+        init=None,
         seed=seed,
     )
-    
+
+
 def bayes_kit_mala(hp, sp):
     model = get_model(hp.model_num, hp.pdb_dir)
     # seed depends on global seed and chain number
@@ -40,15 +42,10 @@ def bayes_kit_mala(hp, sp):
     fname = os.path.join(
         hp.pdb_dir, f"PDB_{hp.model_num:02d}", f"PDB_{hp.model_num:02d}.samples.npy"
     )
-    init_constrained = np.load(fname)[0, -1, :].copy(order="C")
+    init_constrained = np.load(fname)[hp.chain_num - 1, -1, :].copy(order="C")
     init = model.unconstrain(init_constrained)
-    
-    return MALA(
-        model = model,
-        epsilon = sp.init_stepsize,
-        init = init,
-        seed = seed
-    )
+
+    return MALA(model=model, epsilon=sp.init_stepsize, init=None, seed=seed)
 
 
 def hmc(hp, sp):
@@ -60,11 +57,13 @@ def hmc(hp, sp):
     # seed depends on global seed and chain number
     seed = int(str(hp.global_seed) + str(hp.chain_num))
 
-    # remove after testing
+    # remove after testing,
     fname = os.path.join(
         hp.pdb_dir, f"PDB_{hp.model_num:02d}", f"PDB_{hp.model_num:02d}.samples.npy"
     )
-    init_constrained = np.load(fname)[0, -1, :].copy(order="C")
+    init_constrained = np.load(fname)[hp.chain_num - 1, -1, :].copy(
+        order="C"
+    )  # indexed by chain number
     init = model.unconstrain(init_constrained)
 
     return DrGhmcDiag(
@@ -77,8 +76,8 @@ def hmc(hp, sp):
         probabilistic=False,
         dampening=1,
     )
-    
-    
+
+
 def ghmc(hp, sp):
     model = get_model(hp.model_num, hp.pdb_dir)
     stepsize = [
@@ -91,7 +90,9 @@ def ghmc(hp, sp):
     fname = os.path.join(
         hp.pdb_dir, f"PDB_{hp.model_num:02d}", f"PDB_{hp.model_num:02d}.samples.npy"
     )
-    init_constrained = np.load(fname)[0, -1, :].copy(order="C")
+    init_constrained = np.load(fname)[hp.chain_num - 1, -1, :].copy(
+        order="C"
+    )  # indexed by chain number
     init = model.unconstrain(init_constrained)
 
     return DrGhmcDiag(
@@ -111,8 +112,11 @@ def drhmc(hp, sp):
     stepsize = [
         sp.init_stepsize * (sp.reduction_factor**-k) for k in range(sp.num_proposals)
     ]
+
     traj_len = sp.steps * stepsize[0]
-    steps = [int(traj_len / stepsize[k]) for k in range(sp.num_proposals)]
+    steps = [
+        int(traj_len / stepsize[k]) for k in range(sp.num_proposals)
+    ]  # const traj len
     # seed depends on global seed and chain number
     seed = int(str(hp.global_seed) + str(hp.chain_num))
 
@@ -120,9 +124,11 @@ def drhmc(hp, sp):
     fname = os.path.join(
         hp.pdb_dir, f"PDB_{hp.model_num:02d}", f"PDB_{hp.model_num:02d}.samples.npy"
     )
-    init_constrained = np.load(fname)[0, -1, :].copy(order="C")
+    init_constrained = np.load(fname)[hp.chain_num - 1, -1, :].copy(
+        order="C"
+    )  # indexed by chain number
     init = model.unconstrain(init_constrained)
-        
+
     return DrGhmcDiag(
         model=model,
         stepsize=stepsize,
@@ -133,7 +139,7 @@ def drhmc(hp, sp):
         probabilistic=sp.probabilistic,
         dampening=1,
     )
-    
+
 
 def drghmc(hp, sp):
     model = get_model(hp.model_num, hp.pdb_dir)
@@ -141,12 +147,18 @@ def drghmc(hp, sp):
         sp.init_stepsize * (sp.reduction_factor**-k) for k in range(sp.num_proposals)
     ]
     
-    if type(sp.steps) is int:
-        traj_len = sp.steps * stepsize[0]
+    
+    if sp.steps == 1:
+        # const number of steps (ghmc)
+        steps = [sp.steps for k in range(sp.num_proposals)]
+    elif sp.steps == "const_traj_len":
+        # const trajectory length (drhmc)
+        init_steps = 1
+        traj_len = init_steps * stepsize[0]
         steps = [int(traj_len / stepsize[k]) for k in range(sp.num_proposals)]
     else:
-        steps = [1 for k in range(sp.num_proposals)]
-        
+        raise ValueError("Invalid value for DRGHMC steps")
+
     # seed depends on global seed and chain number
     seed = int(str(hp.global_seed) + str(hp.chain_num))
 
@@ -154,9 +166,11 @@ def drghmc(hp, sp):
     fname = os.path.join(
         hp.pdb_dir, f"PDB_{hp.model_num:02d}", f"PDB_{hp.model_num:02d}.samples.npy"
     )
-    init_constrained = np.load(fname)[0, -1, :].copy(order="C")
+    init_constrained = np.load(fname)[hp.chain_num - 1, -1, :].copy(
+        order="C"
+    )  # indexed by chain number
     init = model.unconstrain(init_constrained)
-        
+
     return DrGhmcDiag(
         model=model,
         stepsize=stepsize,
